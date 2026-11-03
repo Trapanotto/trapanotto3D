@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.DS_Store
+public/models/*.glb
+*.blend1
+assets-source/cc0-revolver.zip
+assets-source/cc0-revolver/
+assets-source/polyhaven/
+assets-source/firefighter.glb
+assets-source/human-base-rigged.glb
+.tmp-blender/

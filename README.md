@@ -36,4 +36,3 @@ Quellen der CC0-Ausgangsmodelle:
 Die Texturen `public/textures/weathered-steel.png` und `public/textures/industrial-concrete.png` wurden mit der integrierten Bildgenerierung für dieses Projekt erstellt. Die Motive sind nahtloses, abgenutztes graublaues Industriestahlblech mit Rost und Kratzern beziehungsweise ein verschmutzter, fein gerissener Betonboden, jeweils frontal und gleichmässig diffus beleuchtet.
 
 Die komprimierten Spielmodelle werden mitgeliefert; Blender ist zum Spielen und für den Web-Build nicht nötig. Die Skripte `build_revolver.py` und `build_enemies.py` benötigen zum erneuten Erzeugen die jeweiligen CC0-Ausgangsdateien. `download_polyhaven.ps1` lädt die Poly-Haven-Modelle für `pack_polyhaven.py`.
-
