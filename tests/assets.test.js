@@ -22,6 +22,25 @@ test('PBR industrial details contain both imported models and embedded textures'
   assert.ok(names.has('detail_generator'));assert.ok(names.has('detail_utility'));assert.ok(data.images.length>=4);
 });
 
+test('the new Blender machinery exports all six PBR models with embedded textures',()=>{
+  const data=glb('public/models/industry_set.glb.gz');const names=new Set(data.nodes.map(n=>n.name));
+  for(const name of ['compressor','crane','welder','cart','toolchest','drill'])assert.ok(names.has(`industry_${name}`),name);
+  assert.ok(data.images.length>=15);
+  assert.ok(data.images.every(image=>image.bufferView!==undefined),'all maps are embedded for GitHub Pages');
+});
+
+test('the physically based surfaces and recorded sound assets are complete',()=>{
+  for(const texture of ['concrete_floor_worn_02','concrete_block_wall_02','blue_metal_plate']){
+    for(const map of ['color','normal','roughness']){
+      const data=readFileSync(`public/textures/pbr/${texture}_${map}.jpg`);
+      assert.equal(data.readUInt16BE(0),0xffd8,`${texture} ${map} is a JPEG`);
+    }
+  }
+  for(const sound of ['p226-report-0','p226-report-1','sg-report-0','sg-report-1','mp5-report-0','step-hard-0','step-hard-1','step-hard-2']){
+    assert.equal(readFileSync(`public/audio/${sound}.wav`).subarray(0,4).toString(),'RIFF',sound);
+  }
+});
+
 test('the Blender enemy has its rig, clothes and embedded textures',()=>{
   const data=glb('public/models/industrial_enemy.glb.gz');const names=new Set(data.nodes.map(n=>n.name));
   assert.ok(names.has('enemy_human'));assert.ok(names.has('leg_L'));assert.ok(data.skins.length>0);assert.ok(data.images.length>=3);

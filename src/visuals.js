@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { TILE, MAP_HEIGHT, MAP_WIDTH, DOORS, tileCenter } from './level.js';
+import { INDUSTRY_PLACEMENTS, INDUSTRY_OBSTACLES } from './world-layout.js';
 
 const palette = {
   arrival: { wall: '#45504f', floor: '#333b3b', trim: 0x93a29c },
@@ -73,8 +74,8 @@ function hazard(parent,x,y,z,w,d,rotation=0){
 
 export function buildWorld(scene, level, assets) {
   const group=new THREE.Group(); scene.add(group);
-  const light=new THREE.HemisphereLight(0xc4d5ca,0x463d35,2.6); scene.add(light);
-  const ambient=new THREE.AmbientLight(0xc4cebe,1.05); scene.add(ambient);
+  const light=new THREE.HemisphereLight(0xc5d5cf,0x493a2d,1.8); scene.add(light);
+  const ambient=new THREE.AmbientLight(0xc4cebe,.45); scene.add(ambient);
   const wallGeo=new THREE.BoxGeometry(TILE,5,TILE), floorGeo=new THREE.BoxGeometry(TILE,.12,TILE), ceilingGeo=new THREE.BoxGeometry(TILE,.08,TILE);
   const byArea={}; for(const area of Object.keys(palette)) byArea[area]={walls:[],floors:[],ceilings:[]};
   for(let z=0;z<MAP_HEIGHT;z++) for(let x=0;x<MAP_WIDTH;x++){
@@ -89,8 +90,10 @@ export function buildWorld(scene, level, assets) {
   for(const [area,p] of Object.entries(palette)){
     const tint={arrival:0xc6d0cc,hub:0xc8d1c6,foundry:0xe2b5a2,service:0xb9d2c3,archive:0xbcd2d6,reactor:0xd4c2bf}[area];
     const wallMap=assets?.steel??texture(area,'wall'),floorMap=assets?.concrete??texture(area,'floor');
-    const wallMat=new THREE.MeshStandardMaterial({map:wallMap,color:tint,roughness:.88,metalness:.34,emissiveMap:wallMap,emissive:0xffffff,emissiveIntensity:.25});
-    const floorMat=new THREE.MeshStandardMaterial({map:floorMap,color:0xc9ceca,roughness:.94,metalness:.06,emissiveMap:floorMap,emissive:0xffffff,emissiveIntensity:.04});
+    const wallSurface=area==='reactor'?assets?.metalPbr:assets?.wallPbr;
+    const floorSurface=area==='service'?assets?.metalPbr:assets?.floorPbr;
+    const wallMat=new THREE.MeshStandardMaterial({...(wallSurface??{map:wallMap}),color:tint,roughness:.95,metalness:area==='reactor'?.38:.03,normalScale:new THREE.Vector2(.7,.7)});
+    const floorMat=new THREE.MeshStandardMaterial({...(floorSurface??{map:floorMap}),color:area==='foundry'?0xcab4a5:0xd4dad6,roughness:.97,metalness:area==='service'?.38:.04,normalScale:new THREE.Vector2(.65,.65)});
     const ceilMat=new THREE.MeshStandardMaterial({color:new THREE.Color(p.wall).multiplyScalar(.45),roughness:1});
     instanceBoxes(group,byArea[area].walls,wallMat,wallGeo);instanceBoxes(group,byArea[area].floors,floorMat,floorGeo);instanceBoxes(group,byArea[area].ceilings,ceilMat,ceilingGeo);
   }
@@ -182,7 +185,17 @@ export function buildWorld(scene, level, assets) {
     placeDetail('generator',x(43),z(13),.8,1.35);
     for(const [tx,tz,rot] of [[22.1,7,Math.PI/2],[31.8,19,-Math.PI/2],[4.1,22,Math.PI/2],[45.9,17,-Math.PI/2],[20.1,38,Math.PI/2]])placeDetail('utility',x(tx),z(tz),rot,1.1);
   }
-  return {group,doors};
+  const obstacles=assets?.industry?INDUSTRY_OBSTACLES:[];
+  if(assets?.industry){
+    const placeIndustry=(name,tx,tz,rotation=0,scale=1,radius=0,height=0)=>{
+      const source=assets.industry.scene.getObjectByName(`industry_${name}`);if(!source)return;
+      const model=source.clone(true),wx=x(tx),wz=z(tz);model.position.set(wx,height,wz);
+      model.rotation.y=rotation;model.scale.multiplyScalar(scale);group.add(model);
+    };
+    // Full PBR, Blender-prepared machinery breaks up the broad rooms and gives each a purpose.
+    for(const placement of INDUSTRY_PLACEMENTS)placeIndustry(...placement);
+  }
+  return {group,doors,obstacles};
 }
 
 export function makeEnemy(type, assets) {

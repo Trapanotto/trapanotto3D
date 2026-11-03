@@ -1,5 +1,12 @@
+const samples={
+  pistol:['p226-report-0.wav','p226-report-1.wav'],
+  shotgun:['sg-report-0.wav','sg-report-1.wav'],
+  nailgun:['mp5-report-0.wav'],
+  step:['step-hard-0.wav','step-hard-1.wav','step-hard-2.wav']
+};
+
 export class GameAudio {
-  constructor() { this.context = null; this.master = null; this.ambient = null; this.level = .45; }
+  constructor() { this.context = null; this.master = null; this.ambient = null; this.level = .45; this.buffers={}; this.loading=null; }
   async start() {
     if (!this.context) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -14,8 +21,29 @@ export class GameAudio {
       }
       const buffer=this.context.createBuffer(1,this.context.sampleRate*.3,this.context.sampleRate);
       const data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;this.noise=buffer;
+      this.loading=this.loadSamples();
     }
     if(this.context.state==='suspended') await this.context.resume();
+  }
+  async loadSamples(){
+    await Promise.all(Object.entries(samples).map(async ([type,names])=>{
+      const loaded=await Promise.all(names.map(async name=>{
+        try{
+          const response=await fetch(`${import.meta.env.BASE_URL}audio/${name}`);
+          if(!response.ok)return null;
+          return await this.context.decodeAudioData(await response.arrayBuffer());
+        }catch{return null;}
+      }));
+      this.buffers[type]=loaded.filter(Boolean);
+    }));
+  }
+  sample(type,volume=1){
+    const choices=this.buffers[type];
+    if(!this.context||this.context.state!=='running'||!choices?.length)return false;
+    const source=this.context.createBufferSource(),gain=this.context.createGain();
+    source.buffer=choices[Math.floor(Math.random()*choices.length)];
+    source.playbackRate.value=.96+Math.random()*.08;gain.gain.value=volume;
+    source.connect(gain);gain.connect(this.master);source.start();return true;
   }
   setVolume(v) { this.level=Math.max(0,Math.min(1,v));if(this.master)this.master.gain.value=this.level; }
   setAmbient(on) { if(this.ambient)this.ambient.gain.setTargetAtTime(on?.025:0,this.context.currentTime,.2); }
@@ -34,9 +62,10 @@ export class GameAudio {
   }
   play(type){
     switch(type){
-      case 'pistol':this.burst(.10,.15,2300);this.tone(170,.12,'square',.08,.32);break;
-      case 'shotgun':this.burst(.25,.24,1600);this.tone(110,.24,'sawtooth',.13,.3);break;
-      case 'nailgun':this.burst(.045,.08,3600);this.tone(240,.05,'square',.05,.55);break;
+      case 'pistol':if(!this.sample('pistol',.6)){this.burst(.10,.15,2300);this.tone(170,.12,'square',.08,.32);}break;
+      case 'shotgun':if(!this.sample('shotgun',.75)){this.burst(.25,.24,1600);this.tone(110,.24,'sawtooth',.13,.3);}break;
+      case 'nailgun':if(!this.sample('nailgun',.38)){this.burst(.045,.08,3600);this.tone(240,.05,'square',.05,.55);}break;
+      case 'step':this.sample('step',.27);break;
       case 'launcher':this.burst(.18,.16,950);this.tone(110,.22,'sawtooth',.1,.5);break;
       case 'explosion':this.burst(.28,.22,800);this.tone(70,.3,'sawtooth',.16,.32);break;
       case 'fist':this.burst(.06,.06,900);this.tone(100,.08,'triangle',.08,.5);break;

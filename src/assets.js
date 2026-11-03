@@ -8,6 +8,15 @@ async function loadTexture(name){
   texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
   texture.anisotropy=4;texture.generateMipmaps=true;return texture;
 }
+async function loadPbr(name){
+  const loader=new THREE.TextureLoader();
+  const maps=await Promise.all(['color','normal','roughness'].map(kind=>loader.loadAsync(`${base}textures/pbr/${name}_${kind}.jpg`)));
+  for(const [index,map] of maps.entries()){
+    map.colorSpace=index===0?THREE.SRGBColorSpace:THREE.NoColorSpace;
+    map.wrapS=map.wrapT=THREE.RepeatWrapping;map.anisotropy=8;
+  }
+  return {map:maps[0],normalMap:maps[1],roughnessMap:maps[2]};
+}
 async function loadGltf(filename){
   const response=await fetch(`${base}models/${filename}.glb.gz`);
   if(!response.ok)throw new Error(`3D-Modelle konnten nicht geladen werden (${response.status})`);
@@ -26,7 +35,10 @@ async function loadModels(){
   return models;
 }
 export async function loadAssets(){
-  const [models,revolver,details,human,steel,concrete]=await Promise.all([loadModels(),loadGltf('revolver'),loadGltf('polyhaven_details'),loadGltf('industrial_enemy'),loadTexture('weathered-steel'),loadTexture('industrial-concrete')]);
+  const [models,revolver,details,human,industry,steel,concrete,floorPbr,wallPbr,metalPbr]=await Promise.all([
+    loadModels(),loadGltf('revolver'),loadGltf('polyhaven_details'),loadGltf('industrial_enemy'),loadGltf('industry_set'),
+    loadTexture('weathered-steel'),loadTexture('industrial-concrete'),loadPbr('concrete_floor_worn_02'),
+    loadPbr('concrete_block_wall_02'),loadPbr('blue_metal_plate')]);
   const steelBump=steel.clone();steelBump.colorSpace=THREE.NoColorSpace;steelBump.needsUpdate=true;
   const seen=new Set();
   Object.values(models).forEach(model=>model.traverse(node=>{
@@ -44,5 +56,5 @@ export async function loadAssets(){
       }
     }
   }));
-  return {models,revolver,details,human,steel,concrete};
+  return {models,revolver,details,human,industry,steel,concrete,floorPbr,wallPbr,metalPbr};
 }

@@ -7,6 +7,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createLevel, TILE, SPAWN, CHECKPOINT, EXIT, DOORS, ENEMY_SPAWNS, PICKUP_SPAWNS, tileCenter, worldToTile, tileBlocked, canStand, lineClear, areaAt } from './level.js';
 import { buildWorld, makeEnemy, makePickup, makeWeapon } from './visuals.js';
+import { findPath, detectsPlayer, chooseTactic, intersectsObstacle, clearOfObstacles } from './navigation.js';
 
 const WEAPONS = {
   fist: { label:'STAHLFAUST', delay:.48, damage:32, range:2.7, ammo:null },
@@ -47,7 +48,7 @@ export class Game {
     this.projectileGeo=new THREE.SphereGeometry(.15,8,6);
     this.projectileMat=new THREE.MeshBasicMaterial({color:0xff8a43});this.rocketMat=new THREE.MeshStandardMaterial({color:0xe1a044,emissive:0x843000});
     this.keys=new Set();this.pointerDown=false;this.fallbackLook=false;this.lastPointer=null;this.mode='menu';this.lastTime=performance.now();this.elapsedVisual=0;
-    this.hitTime=0;this.hurtTime=0;this.recoil=0;this.cooldown=0;this.snapshot=null;
+    this.hitTime=0;this.hurtTime=0;this.recoil=0;this.cooldown=0;this.stepTimer=0;this.snapshot=null;
     this.reset();this.mode='menu';
     window.addEventListener('resize',()=>this.resize());
     window.addEventListener('keydown',e=>this.keyDown(e));window.addEventListener('keyup',e=>this.keys.delete(e.code));
@@ -80,7 +81,8 @@ export class Game {
   }
   spawnEnemy(type,x,z,id){
     const model=makeEnemy(type,this.assets), stats=ENEMIES[type];model.group.position.set(tileCenter(x),0,tileCenter(z));this.dynamic.add(model.group);
-    this.enemies.push({id,type,...model,health:stats.health,maxHealth:stats.health,attack:Math.random()*1.1+.5,aware:0,hitFlash:0,walk:Math.random()*6});
+    this.enemies.push({id,type,...model,health:stats.health,maxHealth:stats.health,attack:Math.random()*1.1+.5,aware:0,hitFlash:0,walk:Math.random()*6,
+      windup:0, lastSeen:null, route:[], routeTimer:0, routeKey:'', strafeDirection:id%2?1:-1, strafeTimer:1.4+(id%3)*.5, deathTime:0});
   }
   spawnPickup(type,x,z,id){const mesh=makePickup(type);mesh.position.set(tileCenter(x),.05,tileCenter(z));this.dynamic.add(mesh);this.pickups.push({id,type,mesh,baseY:.05,phase:id});}
   setWeapon(type,force=false){
@@ -121,12 +123,18 @@ export class Game {
   move(dt){
     const p=this.player, f=(this.keys.has('KeyW')?1:0)-(this.keys.has('KeyS')?1:0),s=(this.keys.has('KeyD')?1:0)-(this.keys.has('KeyA')?1:0);
     const len=Math.hypot(f,s)||1, speed=9.2;
+    const oldX=p.x,oldZ=p.z;
     const dx=(-Math.sin(p.yaw)*f+Math.cos(p.yaw)*s)/len*speed*dt,dz=(-Math.cos(p.yaw)*f-Math.sin(p.yaw)*s)/len*speed*dt;
-    if(canStand(this.level,p.x+dx,p.z,.42,this.openDoors))p.x+=dx;
-    if(canStand(this.level,p.x,p.z+dz,.42,this.openDoors))p.z+=dz;
+    if(this.canMove(p.x+dx,p.z,.42))p.x+=dx;
+    if(this.canMove(p.x,p.z+dz,.42))p.z+=dz;
     p.vy-=18*dt;p.feet=Math.max(0,p.feet+p.vy*dt);if(p.feet===0&&p.vy<0)p.vy=0;
-    return Boolean(f||s);
+    const moving=Math.hypot(p.x-oldX,p.z-oldZ)>.0001;this.stepTimer-=dt;
+    if(moving&&p.feet===0&&this.stepTimer<=0){this.audio.play('step');this.stepTimer=.38;}
+    if(!moving)this.stepTimer=Math.min(this.stepTimer,.12);
+    return moving;
   }
+  canMove(x,z,radius){return canStand(this.level,x,z,radius,this.openDoors)&&!intersectsObstacle(x,z,radius,this.world.obstacles);}
+  canSee(ax,az,bx,bz){return lineClear(this.level,ax,az,bx,bz,this.openDoors)&&clearOfObstacles(ax,az,bx,bz,this.world.obstacles);}
   updateCamera(dt,moving){
     const p=this.player,bob=moving&&p.feet===0?Math.sin(this.playTime*10)*.035:0;
     this.camera.position.set(p.x,1.65+p.feet+bob,p.z);this.camera.rotation.set(p.pitch,p.yaw,0,'YXZ');
@@ -138,6 +146,7 @@ export class Game {
     if(gun.ammo&&this.ammo[gun.ammo]<=0){this.cooldown=.2;this.message('KEINE MUNITION');return;}
     if(gun.ammo)this.ammo[gun.ammo]--;
     this.cooldown=gun.delay;this.recoil=1;this.muzzleTime=this.weapon==='fist'?0:.07;this.weaponMesh?.userData.fireAction?.reset().play();this.audio.play(this.weapon);
+    if(this.weapon!=='fist')this.alertEnemies(this.player.x,this.player.z,this.weapon==='shotgun'||this.weapon==='launcher'?38:28);
     if(this.weapon==='launcher'){
       const direction=new THREE.Vector3();this.camera.getWorldDirection(direction);
       const mesh=new THREE.Mesh(new THREE.SphereGeometry(.18,8,6),this.rocketMat);mesh.position.copy(this.camera.position).addScaledVector(direction,.65);this.dynamic.add(mesh);
@@ -157,13 +166,13 @@ export class Game {
       const center=enemy.group.position.clone().add(new THREE.Vector3(0,enemy.height*.62,0));
       const t=center.clone().sub(origin).dot(direction);if(t<0||t>nearest)continue;
       if(ray.distanceSqToPoint(center)>enemy.radius*enemy.radius)continue;
-      if(!lineClear(this.level,origin.x,origin.z,center.x,center.z,this.openDoors))continue;
+      if(!this.canSee(origin.x,origin.z,center.x,center.z))continue;
       nearest=t;target=enemy;
     }
     if(target)this.damageEnemy(target,gun.damage);
     let hitDistance=target?nearest:gun.range;
     if(!target){
-      for(let t=.5;t<gun.range;t+=.45){const p=origin.clone().addScaledVector(direction,t);if(p.y<.05||p.y>4.95||tileBlocked(this.level,worldToTile(p.x),worldToTile(p.z),this.openDoors)){hitDistance=Math.max(.5,t-.45);if(showTracer)this.sparks(p.x,p.y,p.z,0xffbd79,5);break;}}
+      for(let t=.5;t<gun.range;t+=.3){const p=origin.clone().addScaledVector(direction,t);if(p.y<.05||p.y>4.95||tileBlocked(this.level,worldToTile(p.x),worldToTile(p.z),this.openDoors)||intersectsObstacle(p.x,p.z,0,this.world.obstacles)){hitDistance=Math.max(.5,t-.3);if(showTracer)this.sparks(p.x,p.y,p.z,0xffbd79,5);break;}}
     }
     if(showTracer&&this.weapon!=='fist'){
       const from=origin.clone().addScaledVector(direction,.8),to=origin.clone().addScaledVector(direction,hitDistance);
@@ -173,10 +182,10 @@ export class Game {
     }
   }
   damageEnemy(enemy,damage){
-    if(enemy.health<=0)return;enemy.health-=damage;enemy.aware=8;enemy.hitFlash=.14;this.hitTime=.13;this.audio.play('hit');
+    if(enemy.health<=0)return;enemy.health-=damage;enemy.aware=8;enemy.lastSeen={x:this.player.x,z:this.player.z};enemy.hitFlash=.14;this.hitTime=.13;this.audio.play('hit');
     this.sparks(enemy.group.position.x,enemy.height*.62,enemy.group.position.z,0xffb569,4);
     if(enemy.health<=0){
-      this.killedIds.add(enemy.id);this.killCount++;this.dynamic.remove(enemy.group);this.audio.play('enemy');this.sparks(enemy.group.position.x,enemy.height*.55,enemy.group.position.z,0xed7d4b,14);
+      this.killedIds.add(enemy.id);this.killCount++;enemy.windup=0;this.audio.play('enemy');this.sparks(enemy.group.position.x,enemy.height*.55,enemy.group.position.z,0xed7d4b,14);
       if(enemy.type==='boss'){this.bossDead=true;this.exitMesh.visible=true;this.message('REAKTOR ABGESCHALTET · ZUM AUSGANG');}
       this.emit();
     }
@@ -195,29 +204,81 @@ export class Game {
     const mesh=new THREE.Mesh(this.projectileGeo,this.projectileMat);mesh.position.copy(start);if(enemy.type==='boss')mesh.scale.setScalar(1.7);this.dynamic.add(mesh);
     this.projectiles.push({mesh,velocity,damage:ENEMIES[enemy.type].damage,owner:'enemy',life:5});
   }
+  alertEnemies(x,z,radius){
+    for(const enemy of this.enemies){
+      if(enemy.health<=0||(enemy.type==='boss'&&!this.bossAwake))continue;
+      const pos=enemy.group.position,dist=Math.hypot(pos.x-x,pos.z-z);
+      if(dist>radius)continue;
+      // Walls muffle gunfire, but a nearby shot still attracts attention.
+      if(dist>radius*.46&&!lineClear(this.level,pos.x,pos.z,x,z,this.openDoors))continue;
+      enemy.aware=Math.max(enemy.aware,12);enemy.lastSeen={x,z};enemy.routeTimer=0;
+    }
+  }
+  moveEnemy(enemy,dx,dz,dt){
+    const length=Math.hypot(dx,dz);if(length<.01)return false;
+    const speed=ENEMIES[enemy.type].speed*(enemy.type==='boss'&&this.bossPhase?1.3:1);
+    const step=Math.min(length,speed*dt),mx=dx/length*step,mz=dz/length*step,r=enemy.radius*.7,pos=enemy.group.position;
+    let moved=false;
+    if(this.canMove(pos.x+mx,pos.z,r)){pos.x+=mx;moved||=Math.abs(mx)>.0001;}
+    if(this.canMove(pos.x,pos.z+mz,r)){pos.z+=mz;moved||=Math.abs(mz)>.0001;}
+    if(!moved){
+      // Sliding sideways gives the pathfinder room to clear a small machine or corner.
+      const sx=-mz*enemy.strafeDirection,sz=mx*enemy.strafeDirection;
+      if(this.canMove(pos.x+sx,pos.z+sz,r)){pos.x+=sx;pos.z+=sz;moved=true;}
+      else enemy.strafeDirection*=-1;
+    }
+    return moved;
+  }
   updateEnemies(dt){
     const p=this.player;
     for(const enemy of this.enemies){
-      if(enemy.health<=0)continue;
-      const dx=p.x-enemy.group.position.x,dz=p.z-enemy.group.position.z,dist=Math.hypot(dx,dz);
-      const visible=dist<42&&lineClear(this.level,enemy.group.position.x,enemy.group.position.z,p.x,p.z,this.openDoors);
-      if(enemy.type==='boss'&&!this.bossAwake)continue;
-      if(visible)enemy.aware=6;else enemy.aware=Math.max(0,enemy.aware-dt);
-      enemy.attack-=dt;enemy.walk+=dt*5;
-      if(enemy.parts.hover)enemy.group.position.y=Math.sin(this.elapsedVisual*3+enemy.id)*.16;
-      if(enemy.parts.legL&&enemy.parts.legR){enemy.parts.legL.rotation.x=(enemy.parts.legLBase??0)+Math.sin(enemy.walk)*.28;enemy.parts.legR.rotation.x=(enemy.parts.legRBase??0)-Math.sin(enemy.walk)*.28;}
-      if(enemy.hitFlash>0){enemy.hitFlash-=dt;enemy.group.traverse(o=>{if(o.isMesh&&o.material.emissive)o.material.emissiveIntensity=enemy.hitFlash>0?1.8:.6;});}
-      if(!enemy.aware||dist<.01)continue;
-      enemy.group.rotation.y=Math.atan2(dx,dz);
-      const range=enemy.type==='runner'?1.9:enemy.type==='tank'?8:enemy.type==='boss'?10:12;
-      if(dist>range&&(visible||enemy.aware>0)){
-        const speed=ENEMIES[enemy.type].speed*(enemy.type==='boss'&&this.bossPhase?1.3:1),mx=dx/dist*speed*dt,mz=dz/dist*speed*dt,r=enemy.radius*.7;
-        if(canStand(this.level,enemy.group.position.x+mx,enemy.group.position.z,r,this.openDoors))enemy.group.position.x+=mx;
-        if(canStand(this.level,enemy.group.position.x,enemy.group.position.z+mz,r,this.openDoors))enemy.group.position.z+=mz;
+      if(enemy.health<=0){
+        enemy.deathTime+=dt;
+        if(enemy.type!=='drone')enemy.group.rotation.x=Math.min(1.48,enemy.deathTime*3.7);
+        else enemy.group.position.y=Math.max(0,enemy.group.position.y-dt*2);
+        continue;
       }
-      if(visible&&enemy.attack<=0){
-        if(enemy.type==='runner'){if(dist<2.5){this.damagePlayer(ENEMIES.runner.damage);enemy.attack=ENEMIES.runner.delay;}}
-        else if(dist<30){this.fireEnemy(enemy);if(enemy.type==='boss'&&this.bossPhase){this.fireEnemy(enemy,-.14);this.fireEnemy(enemy,.14);}enemy.attack=ENEMIES[enemy.type].delay*(enemy.type==='boss'&&this.bossPhase?.7:1);}
+      const dx=p.x-enemy.group.position.x,dz=p.z-enemy.group.position.z,dist=Math.hypot(dx,dz);
+      const clear=dist<38&&this.canSee(enemy.group.position.x,enemy.group.position.z,p.x,p.z);
+      const visible=detectsPlayer({dx,dz,facing:enemy.group.rotation.y,visible:clear,alert:enemy.aware>0});
+      if(enemy.type==='boss'&&!this.bossAwake)continue;
+      if(visible){enemy.aware=12;enemy.lastSeen={x:p.x,z:p.z};}else enemy.aware=Math.max(0,enemy.aware-dt);
+      enemy.attack-=dt;enemy.routeTimer-=dt;enemy.strafeTimer-=dt;
+      if(enemy.parts.hover)enemy.group.position.y=Math.sin(this.elapsedVisual*3+enemy.id)*.16;
+      if(enemy.hitFlash>0){enemy.hitFlash-=dt;enemy.group.traverse(o=>{if(o.isMesh&&o.material.emissive)o.material.emissiveIntensity=enemy.hitFlash>0?1.8:.6;});}
+      if(!enemy.aware||!enemy.lastSeen){enemy.windup=0;continue;}
+      const tactic=chooseTactic(enemy.type,dist,visible);let moved=false;
+      if(visible){
+        enemy.group.rotation.y=Math.atan2(dx,dz);
+        if(tactic==='chase')moved=this.moveEnemy(enemy,dx,dz,dt);
+        else if(tactic==='retreat')moved=this.moveEnemy(enemy,-dx,-dz,dt);
+        else if(tactic==='strafe'){
+          if(enemy.strafeTimer<=0){enemy.strafeDirection*=-1;enemy.strafeTimer=1.4+(enemy.id%4)*.35;}
+          moved=this.moveEnemy(enemy,-dz*enemy.strafeDirection,dx*enemy.strafeDirection,dt*.6);
+          if(!moved){enemy.strafeDirection*=-1;enemy.strafeTimer=1;}
+        }
+      } else {
+        const pos=enemy.group.position,goal=enemy.lastSeen;
+        const key=`${worldToTile(goal.x)},${worldToTile(goal.z)},${this.openDoors.size}`;
+        if(enemy.routeTimer<=0||enemy.routeKey!==key){
+          enemy.route=findPath(this.level,pos.x,pos.z,goal.x,goal.z,this.openDoors,this.world.obstacles);
+          enemy.routeTimer=.8+(enemy.id%4)*.13;enemy.routeKey=key;
+        }
+        while(enemy.route.length&&Math.hypot(enemy.route[0].x-pos.x,enemy.route[0].z-pos.z)<.5)enemy.route.shift();
+        const target=enemy.route[0]??(worldToTile(pos.x)===worldToTile(goal.x)&&worldToTile(pos.z)===worldToTile(goal.z)?goal:null);
+        if(target){const mx=target.x-pos.x,mz=target.z-pos.z;enemy.group.rotation.y=Math.atan2(mx,mz);moved=this.moveEnemy(enemy,mx,mz,dt);}
+      }
+      if(moved)enemy.walk+=dt*7;
+      if(enemy.parts.legL&&enemy.parts.legR){const swing=moved?Math.sin(enemy.walk)*.34:0;enemy.parts.legL.rotation.x=(enemy.parts.legLBase??0)+swing;enemy.parts.legR.rotation.x=(enemy.parts.legRBase??0)-swing;}
+      if(enemy.windup>0){
+        enemy.windup-=dt;
+        if(enemy.windup<=0){
+          if(visible&&enemy.type==='runner'&&dist<2.5)this.damagePlayer(ENEMIES.runner.damage);
+          else if(visible&&enemy.type!=='runner'&&dist<30){this.fireEnemy(enemy);if(enemy.type==='boss'&&this.bossPhase){this.fireEnemy(enemy,-.14);this.fireEnemy(enemy,.14);}}
+          enemy.attack=ENEMIES[enemy.type].delay*(enemy.type==='boss'&&this.bossPhase?.7:1);
+        }
+      }else if(visible&&enemy.attack<=0&&((enemy.type==='runner'&&dist<2.5)||(enemy.type!=='runner'&&dist<30))){
+        enemy.windup=enemy.type==='runner'?.22:enemy.type==='tank'?.48:.3;
       }
       if(enemy.type==='boss'&&!this.bossPhase&&enemy.health<enemy.maxHealth*.5){
         this.bossPhase=true;this.message('REAKTOR INSTABIL · SIEGRIST GREIFT AN');
@@ -228,7 +289,7 @@ export class Game {
   updateProjectiles(dt){
     for(let i=this.projectiles.length-1;i>=0;i--){
       const p=this.projectiles[i],prev=p.mesh.position.clone();p.life-=dt;p.mesh.position.addScaledVector(p.velocity,dt);
-      const pos=p.mesh.position,wall=pos.y<.05||pos.y>4.95||tileBlocked(this.level,worldToTile(pos.x),worldToTile(pos.z),this.openDoors);
+      const pos=p.mesh.position,wall=pos.y<.05||pos.y>4.95||tileBlocked(this.level,worldToTile(pos.x),worldToTile(pos.z),this.openDoors)||intersectsObstacle(pos.x,pos.z,.12,this.world.obstacles);
       let impact=wall||p.life<=0;
       if(p.owner==='enemy'&&!impact){const target=new THREE.Vector3(this.player.x,this.player.feet+1.1,this.player.z);if(pos.distanceTo(target)<.8){this.damagePlayer(p.damage);impact=true;}}
       if(p.owner==='player'&&!impact)for(const enemy of this.enemies){if(enemy.health>0&&pos.distanceTo(enemy.group.position.clone().add(new THREE.Vector3(0,enemy.height*.6,0)))<enemy.radius){impact=true;break;}}
@@ -241,8 +302,8 @@ export class Game {
   }
   explode(position,damage){
     this.audio.play('explosion');this.sparks(position.x,position.y,position.z,0xffa44c,24);
-    for(const enemy of this.enemies){if(enemy.health<=0)continue;const center=enemy.group.position.clone().add(new THREE.Vector3(0,enemy.height*.55,0)),d=position.distanceTo(center);if(d<4&&lineClear(this.level,position.x,position.z,center.x,center.z,this.openDoors))this.damageEnemy(enemy,damage*(1-d/5));}
-    const d=Math.hypot(position.x-this.player.x,position.z-this.player.z,position.y-(this.player.feet+1));if(d<3.5&&lineClear(this.level,position.x,position.z,this.player.x,this.player.z,this.openDoors))this.damagePlayer(damage*.35*(1-d/4));
+    for(const enemy of this.enemies){if(enemy.health<=0)continue;const center=enemy.group.position.clone().add(new THREE.Vector3(0,enemy.height*.55,0)),d=position.distanceTo(center);if(d<4&&this.canSee(position.x,position.z,center.x,center.z))this.damageEnemy(enemy,damage*(1-d/5));}
+    const d=Math.hypot(position.x-this.player.x,position.z-this.player.z,position.y-(this.player.feet+1));if(d<3.5&&this.canSee(position.x,position.z,this.player.x,this.player.z))this.damagePlayer(damage*.35*(1-d/4));
   }
   sparks(x,y,z,color,count){
     for(let i=0;i<count;i++){const mesh=new THREE.Mesh(new THREE.BoxGeometry(.07,.07,.07),new THREE.MeshBasicMaterial({color}));mesh.position.set(x,y,z);this.dynamic.add(mesh);this.particles.push({mesh,v:new THREE.Vector3((Math.random()-.5)*4,Math.random()*3,(Math.random()-.5)*4),life:.35+Math.random()*.35});}
