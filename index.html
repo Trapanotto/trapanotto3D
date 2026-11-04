@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#101318" />
-    <meta name="description" content="Trapanotto 3D – ein schneller Retro-Shooter in einem verlassenen Schweizer Industriewerk." />
+    <meta
+      name="description"
+      content="Trapanotto 3D – ein schneller Retro-Shooter in einem verlassenen Schweizer Industriewerk."
+    />
     <title>TRAPANOTTO 3D — Nachtschicht</title>
   </head>
   <body>
@@ -16,44 +19,174 @@
 
       <main id="menu-screen" class="screen menu-screen">
         <header class="masthead">
-          <div class="brand"><span class="brand-mark">T<span>3</span></span><span>TRAPANOTTO<br /><small>INTERACTIVE</small></span></div>
-          <div class="masthead-meta"><span class="live-dot"></span> SYSTEM ONLINE <i></i> SOLO EXPERIENCE <i></i> DE / CH</div>
+          <div class="brand">
+            <span class="brand-mark">T<span>3</span></span
+            ><span>TRAPANOTTO<br /><small>INTERACTIVE</small></span>
+          </div>
+          <div class="masthead-meta">
+            <span class="live-dot"></span> SYSTEM ONLINE <i></i> SOLO EXPERIENCE <i></i> DE / CH
+          </div>
         </header>
         <section class="hero">
-          <div class="eyebrow"><span class="eyebrow-line"></span> EINE NACHT. EIN WERK. KEIN ZURÜCK.</div>
-          <h1><span>TRAPANOTTO</span><strong>3D<span class="title-period">.</span></strong></h1>
-          <div class="hero-rule"><span></span><b>EST. 2026</b></div>
-          <p class="hero-copy">Ein Notruf aus einem stillgelegten Werk.<br />Zwölf Jahre zu spät. Aber noch nicht zu spät.</p>
-          <div class="actions">
-            <button id="start-button" class="button button-primary" disabled><span>EINSATZ STARTEN</span><b>↗</b></button>
-            <button id="settings-button" class="button button-secondary"><span>EINSTELLUNGEN</span><b>+</b></button>
+          <div class="eyebrow">
+            <span class="eyebrow-line"></span> EINE NACHT. EIN WERK. KEIN ZURÜCK.
           </div>
-          <p class="device-note">FÜR DESKTOP <span>·</span> MAUS + TASTATUR <span>·</span> SOUND AN EMPFOHLEN</p>
+          <h1>
+            <span>TRAPANOTTO</span><strong>3D<span class="title-period">.</span></strong>
+          </h1>
+          <div class="hero-rule"><span></span><b>EST. 2026</b></div>
+          <p class="hero-copy">
+            Ein Notruf aus einem stillgelegten Werk.<br />Zwölf Jahre zu spät. Aber noch nicht zu
+            spät.
+          </p>
+          <div class="actions">
+            <button id="start-button" class="button button-primary" disabled>
+              <span>EINSATZ STARTEN</span><b>↗</b>
+            </button>
+            <button id="settings-button" class="button button-secondary">
+              <span>EINSTELLUNGEN</span><b>+</b>
+            </button>
+          </div>
+          <p class="device-note">
+            FÜR DESKTOP <span>·</span> MAUS + TASTATUR <span>·</span> SOUND AN EMPFOHLEN
+          </p>
         </section>
-        <aside class="menu-stamp" aria-hidden="true"><span>WERK</span><strong>03</strong><small>NACHTSCHICHT<br />SOLO / 01</small></aside>
-        <footer class="menu-footer"><span>© TRAPANOTTO 3D <i>/</i> UNABHÄNGIGES BROWSERSPIEL</span><span>INDUSTRIEZONE MITTELLAND <i>—</i> SCHWEIZ</span></footer>
+        <aside class="menu-stamp" aria-hidden="true">
+          <span>WERK</span><strong>03</strong><small>NACHTSCHICHT<br />SOLO / 01</small>
+        </aside>
+        <footer class="menu-footer">
+          <span>© TRAPANOTTO 3D <i>/</i> UNABHÄNGIGES BROWSERSPIEL</span
+          ><span>INDUSTRIEZONE MITTELLAND <i>—</i> SCHWEIZ</span>
+        </footer>
       </main>
 
       <div id="game-hud" class="game-hud hidden" aria-live="polite">
-        <div class="hud-top"><div class="hud-objective"><span class="hud-label"><span class="live-dot"></span> AKTUELLES ZIEL</span><strong id="objective">ERREICHE DIE ZENTRALE</strong><span id="area-name">ANLIEFERUNG</span></div><div class="hud-top-right"><span>TRAPANOTTO <b>3D</b></span><small id="elapsed">00:00</small></div></div>
+        <div class="hud-top">
+          <div class="hud-objective">
+            <span class="hud-label"><span class="live-dot"></span> AKTUELLES ZIEL</span
+            ><strong id="objective">ERREICHE DIE ZENTRALE</strong
+            ><span id="area-name">ANLIEFERUNG</span>
+          </div>
+          <div class="hud-top-right">
+            <span>TRAPANOTTO <b>3D</b></span
+            ><small id="elapsed">00:00</small>
+          </div>
+        </div>
         <div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i><b></b></div>
         <div id="hit-marker" class="hit-marker">×</div>
         <div id="interaction" class="interaction hidden"></div>
         <div id="message" class="game-message"></div>
-        <div id="boss-bar" class="boss-bar hidden"><div><span>SIEGRIST</span><span>DER OFENKÖNIG</span></div><i><b id="boss-fill"></b></i></div>
-        <div class="hud-bottom"><div class="hud-group"><div class="stat"><span>GESUNDHEIT</span><strong id="health">100</strong></div><div class="stat stat-armor"><span>RÜSTUNG</span><strong id="armor">00</strong></div></div><div class="hud-center"><div id="key-red" class="key-icon">R</div><div id="key-yellow" class="key-icon">G</div><span id="weapon-slots">1 &nbsp; 2 &nbsp; 3 &nbsp; 4 &nbsp; 5</span></div><div class="hud-group hud-ammo"><div class="stat"><span id="weapon-name">SCHROTTREVOLVER</span><strong id="ammo">48</strong></div><div class="ammo-icon">▰<br />▰<br />▰</div></div></div>
+        <div id="boss-bar" class="boss-bar hidden">
+          <div><span>SIEGRIST</span><span>DER OFENKÖNIG</span></div>
+          <i><b id="boss-fill"></b></i>
+        </div>
+        <div class="hud-bottom">
+          <div class="hud-group">
+            <div class="stat"><span>GESUNDHEIT</span><strong id="health">100</strong></div>
+            <div class="stat stat-armor"><span>RÜSTUNG</span><strong id="armor">00</strong></div>
+          </div>
+          <div class="hud-center">
+            <div id="key-red" class="key-icon">R</div>
+            <div id="key-yellow" class="key-icon">G</div>
+            <span id="weapon-slots">1 &nbsp; 2 &nbsp; 3 &nbsp; 4 &nbsp; 5</span>
+          </div>
+          <div class="hud-group hud-ammo">
+            <div class="stat">
+              <span id="weapon-name">SCHROTTREVOLVER</span><strong id="ammo">48</strong>
+            </div>
+            <div class="ammo-icon">▰<br />▰<br />▰</div>
+          </div>
+        </div>
       </div>
 
-      <div id="pause-screen" class="screen overlay hidden"><div class="modal"><div class="modal-kicker">EINSATZ UNTERBROCHEN <span>01 / 03</span></div><h2>PAUSE<span>.</span></h2><p>Durchatmen. Das Werk wartet.</p><button id="resume-button" class="button button-primary"><span>WEITERSPIELEN</span><b>↗</b></button><button id="pause-settings-button" class="button button-secondary"><span>EINSTELLUNGEN</span><b>+</b></button><button id="quit-button" class="text-button">ZUM HAUPTMENÜ ↗</button></div></div>
+      <div id="pause-screen" class="screen overlay hidden">
+        <div class="modal">
+          <div class="modal-kicker">EINSATZ UNTERBROCHEN <span>01 / 03</span></div>
+          <h2>PAUSE<span>.</span></h2>
+          <p>Durchatmen. Das Werk wartet.</p>
+          <button id="resume-button" class="button button-primary">
+            <span>WEITERSPIELEN</span><b>↗</b></button
+          ><button id="pause-settings-button" class="button button-secondary">
+            <span>EINSTELLUNGEN</span><b>+</b></button
+          ><button id="quit-button" class="text-button">ZUM HAUPTMENÜ ↗</button>
+        </div>
+      </div>
 
-      <div id="death-screen" class="screen overlay hidden"><div class="modal"><div class="modal-kicker">SIGNAL VERLOREN <span>02 / 03</span></div><h2>EINSATZ<br />BEENDET<span>.</span></h2><p>Im Werk ist es noch nicht still.</p><button id="checkpoint-button" class="button button-primary hidden"><span>AB KONTROLLPUNKT</span><b>↗</b></button><button id="restart-button" class="button button-secondary"><span>NEUER VERSUCH</span><b>↗</b></button><button id="death-menu-button" class="text-button">ZUM HAUPTMENÜ ↗</button></div></div>
+      <div id="death-screen" class="screen overlay hidden">
+        <div class="modal">
+          <div class="modal-kicker">SIGNAL VERLOREN <span>02 / 03</span></div>
+          <h2>EINSATZ<br />BEENDET<span>.</span></h2>
+          <p>Im Werk ist es noch nicht still.</p>
+          <button id="checkpoint-button" class="button button-primary hidden">
+            <span>AB KONTROLLPUNKT</span><b>↗</b></button
+          ><button id="restart-button" class="button button-secondary">
+            <span>NEUER VERSUCH</span><b>↗</b></button
+          ><button id="death-menu-button" class="text-button">ZUM HAUPTMENÜ ↗</button>
+        </div>
+      </div>
 
-      <div id="win-screen" class="screen overlay hidden"><div class="modal"><div class="modal-kicker">SIGNAL BEENDET <span>03 / 03</span></div><h2>ES IST<br />STILL<span>.</span></h2><p>Der Reaktor ist abgeschaltet. Draussen beginnt ein gewöhnlicher Morgen.</p><div id="run-stats" class="run-stats"></div><button id="again-button" class="button button-primary"><span>NOCH EINMAL</span><b>↗</b></button><button id="win-menu-button" class="text-button">ZUM HAUPTMENÜ ↗</button></div></div>
+      <div id="win-screen" class="screen overlay hidden">
+        <div class="modal">
+          <div class="modal-kicker">SIGNAL BEENDET <span>03 / 03</span></div>
+          <h2>ES IST<br />STILL<span>.</span></h2>
+          <p>Der Reaktor ist abgeschaltet. Draussen beginnt ein gewöhnlicher Morgen.</p>
+          <div id="run-stats" class="run-stats"></div>
+          <button id="again-button" class="button button-primary">
+            <span>NOCH EINMAL</span><b>↗</b></button
+          ><button id="win-menu-button" class="text-button">ZUM HAUPTMENÜ ↗</button>
+        </div>
+      </div>
 
-      <div id="settings-screen" class="screen overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title"><div class="modal settings-modal"><div class="modal-kicker">SYSTEM <span>OPTIONEN</span></div><h2 id="settings-title">OPTIONEN<span>.</span></h2><label>SCHWIERIGKEIT<select id="difficulty"><option value="easy">ERKUNDUNG</option><option value="normal">VETERAN</option><option value="hard">ALBTRAUM</option></select></label><label>GRAFIK<select id="quality"><option value="high">HOCH</option><option value="performance">LEISTUNG</option></select></label><label>MAUSEMPFINDLICHKEIT <output id="sensitivity-value"></output><input type="range" id="sensitivity" min="0.5" max="2" step="0.1" /></label><label>SICHTFELD <output id="fov-value"></output><input type="range" id="fov" min="65" max="100" step="1" /></label><label>LAUTSTÄRKE <output id="volume-value"></output><input type="range" id="volume" min="0" max="100" step="5" /></label><label class="check-label"><input type="checkbox" id="screen-effects" /> BILDSCHIRMWACKELN & TREFFERBLITZE</label><div class="controls-help"><b>STEUERUNG</b><span>WASD Bewegung · Maus Zielen · Klick Schiessen · Leertaste Springen · E Benutzen · 1–5 Waffen · Esc Pause</span></div><button id="settings-close" class="button button-primary"><span>ZURÜCK</span><b>↗</b></button></div></div>
-      <div id="mobile-warning" class="mobile-warning">TRAPANOTTO 3D BENÖTIGT EINE TASTATUR UND MAUS.</div>
+      <div
+        id="settings-screen"
+        class="screen overlay hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+      >
+        <div class="modal settings-modal">
+          <div class="modal-kicker">SYSTEM <span>OPTIONEN</span></div>
+          <h2 id="settings-title">OPTIONEN<span>.</span></h2>
+          <label
+            >SCHWIERIGKEIT<select id="difficulty">
+              <option value="easy">ERKUNDUNG</option>
+              <option value="normal">VETERAN</option>
+              <option value="hard">ALBTRAUM</option>
+            </select></label
+          ><label
+            >GRAFIK<select id="quality">
+              <option value="high">HOCH</option>
+              <option value="performance">LEISTUNG</option>
+            </select></label
+          ><label
+            >MAUSEMPFINDLICHKEIT <output id="sensitivity-value"></output
+            ><input type="range" id="sensitivity" min="0.5" max="2" step="0.1" /></label
+          ><label
+            >SICHTFELD <output id="fov-value"></output
+            ><input type="range" id="fov" min="65" max="100" step="1" /></label
+          ><label
+            >LAUTSTÄRKE <output id="volume-value"></output
+            ><input type="range" id="volume" min="0" max="100" step="5" /></label
+          ><label class="check-label"
+            ><input type="checkbox" id="screen-effects" /> BILDSCHIRMWACKELN & TREFFERBLITZE</label
+          >
+          <div class="controls-help">
+            <b>STEUERUNG</b
+            ><span
+              >WASD Bewegung · Maus Zielen · Klick Schiessen · Leertaste Springen · E Benutzen · 1–5
+              Waffen · Esc Pause</span
+            >
+          </div>
+          <button id="settings-close" class="button button-primary">
+            <span>ZURÜCK</span><b>↗</b>
+          </button>
+        </div>
+      </div>
+      <div id="mobile-warning" class="mobile-warning">
+        TRAPANOTTO 3D BENÖTIGT EINE TASTATUR UND MAUS.
+      </div>
       <div id="boot-status" class="boot-status">SYSTEM WIRD GESTARTET ...</div>
     </div>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

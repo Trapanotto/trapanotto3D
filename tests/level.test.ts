@@ -1,16 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLevel, tileBlocked, SPAWN, DOORS, ENEMY_SPAWNS, PICKUP_SPAWNS } from '../src/level.js';
+import {
+  createLevel,
+  tileBlocked,
+  SPAWN,
+  DOORS,
+  ENEMY_SPAWNS,
+  PICKUP_SPAWNS,
+} from '../src/world/level.ts';
 
 const level = createLevel();
-function reaches(target, doors = []) {
-  const open = new Set(doors), todo = [[SPAWN.x, SPAWN.z]], seen = new Set();
+function reaches(target: [number, number], doors: string[] = []) {
+  const open = new Set(doors),
+    todo: [number, number][] = [[SPAWN.x, SPAWN.z]],
+    seen = new Set<string>();
   while (todo.length) {
-    const [x,z] = todo.shift(), id = `${x},${z}`;
+    const [x, z] = todo.shift()!,
+      id = `${x},${z}`;
     if (seen.has(id) || tileBlocked(level, x, z, open)) continue;
     if (x === target[0] && z === target[1]) return true;
     seen.add(id);
-    todo.push([x+1,z],[x-1,z],[x,z+1],[x,z-1]);
+    todo.push([x + 1, z], [x - 1, z], [x, z + 1], [x, z - 1]);
   }
   return false;
 }
@@ -25,13 +35,22 @@ test('keys gate their intended areas without blocking the critical path', () => 
 
 test('all enemies and pickups are on walkable tiles', () => {
   for (const [, x, z] of [...ENEMY_SPAWNS, ...PICKUP_SPAWNS]) {
-    assert.equal(tileBlocked(level, x, z, new Set(DOORS.map(d => d.id))), false, `blocked spawn at ${x},${z}`);
+    assert.equal(
+      tileBlocked(level, x, z, new Set(DOORS.map((d) => d.id))),
+      false,
+      `blocked spawn at ${x},${z}`,
+    );
   }
 });
 
 test('each secret can be reached only when its hidden door opens', () => {
   const base = ['red', 'yellow'];
-  for (const [door, target] of [['secret-arrival', [32,5]], ['secret-foundry', [2,17]], ['secret-archive', [42,6]]]) {
+  const secrets: [string, [number, number]][] = [
+    ['secret-arrival', [32, 5]],
+    ['secret-foundry', [2, 17]],
+    ['secret-archive', [42, 6]],
+  ];
+  for (const [door, target] of secrets) {
     assert.equal(reaches(target, base), false, `${door} is hidden`);
     assert.equal(reaches(target, [...base, door]), true, `${door} opens`);
   }

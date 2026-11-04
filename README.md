@@ -17,11 +17,17 @@ Voraussetzungen: Node.js und npm.
 ```sh
 npm ci
 npm run dev
-npm test
+npm run check   # Typprüfung, ESLint und Tests
 npm run build
 ```
 
-Das Projekt verwendet Three.js und Vite. Der Vite-Basispfad `/trapanotto3D/` entspricht dem GitHub-Pages-Projektpfad. Der Workflow in `.github/workflows/deploy.yml` baut und veröffentlicht Pushes auf `main`.
+Das Projekt ist in TypeScript geschrieben und verwendet Three.js und Vite. Die Tests laufen direkt mit Node (ab 22.18) ohne Build-Schritt.
+
+**Aufbau von `src/`:** `config/` (Waffen, Gegner, Texte, Feineinstellungen), `world/` (Karte, Navigation, Platzierungen), `core/` (fester 60-Hz-Simulationstakt, Eingabe, Kollisionsabfragen), `player/`, `weapons/`, `ai/` (Gegnerverhalten), `combat/` (Projektile), `fx/` (Partikel- und Tracer-Pools), `render/` (Renderer, Nachbearbeitung, Weltaufbau, Modelle), `game/` (Pickups, Spielstand), `ui/` und `debug/`. `game.ts` verbindet die Systeme.
+
+**Debug-Panel:** Im Dev-Server immer aktiv, in jedem Build mit `?debug` in der URL. Es zeigt Leistung (fps, CPU, GPU) und hat Regler für Licht, Farbkorrektur, Waffenposition, Bewegung und KI sowie Cheats und Teleport. Ein- und ausblenden mit **F2**. `?qa` startet im Dev-Server die Browser-Prüfungen.
+
+**Gegner-KI:** Gegner brauchen beim Entdecken einen Moment zum Reagieren und rufen Verbündete in der Nähe. Nur wenige greifen gleichzeitig an (zwei auf «Veteran»). Jeder Angriff wird durch Aufglühen und einen Ton angekündigt, genug Schaden in dieser Phase lässt den Gegner taumeln und bricht den Angriff ab. Runner springen aus kurzer Distanz an und weichen danach zurück. Schützen feuern Salven und halten etwas vor. Kopftreffer zählen doppelt. Der Vite-Basispfad `/trapanotto3D/` entspricht dem GitHub-Pages-Projektpfad. Der Workflow in `.github/workflows/deploy.yml` baut und veröffentlicht Pushes auf `main`.
 
 ## 3D-Assets und Texturen
 
